@@ -1,220 +1,34 @@
+# Importing the necessary libarries
 import os
-import fitz  # PyMuPDF
+import fitz  
 import streamlit as st
 from dotenv import load_dotenv
-from pdf2image import convert_from_bytes
-import pytesseract
-from groq import Groq
-from googleapiclient.discovery import build
+from pdf2image import convert_from_bytes  
+import pytesseract  
+from groq import Groq  
+from googleapiclient.discovery import build  
 
-# Load environment variables
+# Loading the environmental variables
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 GOOGLE_CSE_ID = os.getenv("GOOGLE_CSE_ID")
 
+# Streamlit page configuration 
 st.set_page_config(
     page_title="Legal Document Simplifier",
     layout="wide",
     page_icon="⚖️"
 )
 
-# Enhanced CSS with vibrant colors and modern styling
-st.markdown("""
-<style>
-/* Main title styling */
-h1 {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    font-weight: 700;
-    text-align: center;
-    margin-bottom: 2rem;
-    font-size: 2.5rem;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-}
+# Custom CSS Styling 
+st.markdown("""<style>...your CSS block...</style>""", unsafe_allow_html=True)
 
-/* Main app background */
-.main .block-container {
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    border-radius: 15px;
-    padding: 2rem;
-    margin-top: 1rem;
-}
-
-/* Button styling */
-.stButton > button {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    font-weight: 600;
-    padding: 0.8rem 2rem;
-    border-radius: 25px;
-    border: none;
-    width: 100%;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-    font-size: 1.1rem;
-}
-.stButton > button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-}
-
-/* File uploader styling */
-.uploadedFile {
-    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-    border-radius: 10px;
-    padding: 1rem;
-    border: 2px dashed #667eea;
-}
-
-/* Text area styling */
-.stTextArea > div > div > textarea {
-    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-    border: 2px solid #ff9a9e;
-    border-radius: 15px;
-    color: #333;
-    font-weight: 500;
-}
-
-/* Q&A section styling */
-.qa-section {
-    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-    padding: 1.5rem;
-    border-radius: 15px;
-    border-left: 6px solid #667eea;
-    margin: 1rem 0;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    transition: transform 0.3s ease;
-}
-.qa-section:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-}
-
-.question {
-    font-weight: 700;
-    color: #667eea;
-    margin-bottom: 0.8rem;
-    font-size: 1.1rem;
-}
-.answer {
-    color: #4a5568;
-    line-height: 1.7;
-    font-size: 1rem;
-    background: rgba(255,255,255,0.7);
-    padding: 1rem;
-    border-radius: 10px;
-    border-left: 4px solid #ff9a9e;
-}
-
-/* Subheader styling */
-h2, h3 {
-    color: #667eea;
-    border-bottom: 2px solid #ff9a9e;
-    padding-bottom: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-/* Info boxes */
-.stInfo {
-    background: linear-gradient(135deg, #d299c2 0%, #fef9d3 100%);
-    border-radius: 10px;
-    border-left: 4px solid #667eea;
-}
-
-/* Warning boxes */
-.stWarning {
-    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-    border-radius: 10px;
-    border-left: 4px solid #ff9a9e;
-}
-
-/* Error boxes */
-.stError {
-    background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
-    border-radius: 10px;
-    border-left: 4px solid #e17055;
-}
-
-/* Success boxes */
-.stSuccess {
-    background: linear-gradient(135deg, #b7f8db 0%, #50fa7b 100%);
-    border-radius: 10px;
-    border-left: 4px solid #00b894;
-}
-
-/* Code blocks */
-.stCodeBlock {
-    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
-    border-radius: 10px;
-    border: 2px solid #667eea;
-}
-
-/* Suggested questions buttons */
-div[data-testid="column"] .stButton > button {
-    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
-    color: #333;
-    font-weight: 600;
-    padding: 0.6rem 1rem;
-    border-radius: 20px;
-    border: 2px solid #ff9a9e;
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
-}
-
-div[data-testid="column"] .stButton > button:hover {
-    background: linear-gradient(135deg, #fecfef 0%, #ff9a9e 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 10px rgba(255, 154, 158, 0.3);
-}
-
-/* Text input styling */
-.stTextInput > div > div > input {
-    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-    border: 2px solid #ff9a9e;
-    border-radius: 15px;
-    color: #333;
-    font-weight: 500;
-    padding: 0.8rem;
-}
-
-/* Spinner styling */
-.stSpinner > div {
-    border-top-color: #667eea !important;
-}
-
-/* Markdown links */
-a {
-    color: #667eea;
-    text-decoration: none;
-    font-weight: 600;
-}
-a:hover {
-    color: #764ba2;
-    text-decoration: underline;
-}
-
-/* Columns styling */
-div[data-testid="column"] {
-    padding: 0.5rem;
-}
-
-/* Section dividers */
-hr {
-    border: none;
-    height: 3px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 2px;
-    margin: 2rem 0;
-}
-</style>
-""", unsafe_allow_html=True)
 
 st.title("⚖️ Legal Document Simplifier")
 
+-
+# Initializing GROQ and Google Search API clients
 if not GROQ_API_KEY or "gsk_" not in GROQ_API_KEY:
     st.warning("Invalid or missing GROQ_API_KEY. AI simplification will not work.")
 if not GOOGLE_API_KEY or not GOOGLE_CSE_ID:
@@ -223,7 +37,9 @@ if not GOOGLE_API_KEY or not GOOGLE_CSE_ID:
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 search_service = build("customsearch", "v1", developerKey=GOOGLE_API_KEY) if GOOGLE_API_KEY else None
 
+# AI Simplification Function
 def call_llama_groq(prompt):
+    """Call the GROQ LLaMA-3 model with a user-defined prompt"""
     if not client:
         return "GROQ API key missing, cannot process request."
     try:
@@ -240,10 +56,9 @@ def call_llama_groq(prompt):
     except Exception as e:
         return f"Error calling GROQ API: {e}"
 
+# AI Q&A Function
 def answer_question_about_document(question, document_text):
-    """
-    Answer a specific question about the given document using AI
-    """
+    """Uses LLaMA-3 to answer a question based only on the uploaded legal document"""
     if not client:
         return "GROQ API key missing, cannot answer questions."
     
@@ -268,14 +83,16 @@ Answer:"""
                 {"role": "system", "content": "You are a helpful legal assistant who answers questions based strictly on the provided document content."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.3,  
+            temperature=0.3,
             max_tokens=1200
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
         return f"Error answering question: {e}"
 
+# PDF Text Extraction Function
 def extract_text_from_pdf(uploaded_file):
+    """Extracts text from PDF using PyMuPDF. If it fails, uses OCR as a fallback."""
     try:
         pdf_bytes = uploaded_file.getvalue()
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
@@ -294,7 +111,9 @@ def extract_text_from_pdf(uploaded_file):
         st.error(f"OCR failed: {e}")
         return ""
 
+# Google Search Function 
 def google_search(query, num=5):
+    """Performs a Google Custom Search for legal advisors"""
     if not search_service:
         return []
     try:
@@ -304,6 +123,7 @@ def google_search(query, num=5):
         st.error(f"Google Search API error: {e}")
         return []
 
+# Main App Logic 
 def main():
     st.write("Upload a legal PDF document or paste legal text below, then click the button to simplify and get advisor recommendations.")
 
@@ -313,7 +133,6 @@ def main():
     with col2:
         text_input = st.text_area("Paste Legal Text Here", height=150)
 
-    # Initialize session state for document text
     if 'document_text' not in st.session_state:
         st.session_state.document_text = ""
     if 'document_processed' not in st.session_state:
@@ -337,7 +156,6 @@ def main():
             source = "text input"
             raw_text = text_input.strip()
 
-        # Store document text in session state
         st.session_state.document_text = raw_text
         st.session_state.document_processed = True
 
@@ -347,9 +165,9 @@ def main():
         prompt = f"""
 The following is a {source} containing legal language:
 
-=== START ===
+
 {raw_text}
-=== END ===
+
 
 Please:
 1. Summarize the document in plain English.
@@ -360,9 +178,11 @@ Please:
         with st.spinner("Analyzing legal document with AI..."):
             simplified = call_llama_groq(prompt)
 
+        # Displaying the AI Output
         st.subheader("Simplified Summary")
         st.write(simplified)
 
+        # Search for Legal Advisors 
         st.subheader("Recommended Legal Advisors")
         query = "legal advisor near me for contract law"
         with st.spinner("Searching for legal advisors..."):
@@ -377,13 +197,13 @@ Please:
         else:
             st.info("No legal advisors found or missing Google API keys.")
 
-    # Q&A Section - only show if document has been processed
+    # Q&A Section for the uploaded document
     if st.session_state.document_processed and st.session_state.document_text:
         st.markdown("---")
         st.subheader("Ask Questions About Your Document")
         st.write("You can now ask specific questions about the document you uploaded or pasted.")
-        
-        # Question input
+
+        # User Q&A input
         user_question = st.text_input(
             "Enter your question about the document:",
             placeholder="e.g., What are the key obligations mentioned in this contract?",
@@ -398,7 +218,7 @@ Please:
             with st.spinner("Analyzing document to answer your question..."):
                 answer = answer_question_about_document(user_question, st.session_state.document_text)
             
-            # Display Q&A in a styled format
+            # Displaying the Q&A result
             st.markdown(f"""
             <div class="qa-section">
                 <div class="question">{user_question}</div>
@@ -408,8 +228,8 @@ Please:
         
         elif ask_button and not user_question.strip():
             st.error("Please enter a question before clicking 'Ask Question'.")
-        
-        # Common question suggestions
+
+        # Suggested Questions
         st.markdown("**Suggested Questions:**")
         suggested_questions = [
             "What are the main parties involved in this document?",
@@ -420,7 +240,7 @@ Please:
             "Are there any termination clauses?",
             "What are the governing laws mentioned?"
         ]
-        
+
         cols = st.columns(2)
         for i, question in enumerate(suggested_questions):
             with cols[i % 2]:
@@ -438,5 +258,6 @@ Please:
     elif not st.session_state.document_processed:
         st.info("Upload a document and click 'Simplify & Recommend Advisor' first to enable the Q&A feature.")
 
+# Run the App 
 if __name__ == "__main__":
     main()
